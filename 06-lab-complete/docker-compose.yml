@@ -1,0 +1,23 @@
+services:
+  agent:
+    build: .
+    environment:
+      PORT: ${PORT:-8000}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      AGENT_API_KEY: ${AGENT_API_KEY:-dev-key}
+      REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-10}
+      DAILY_BUDGET_USD: ${DAILY_BUDGET_USD:-1.0}
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    depends_on:
+      - redis
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+volumes:
+  redis-data:

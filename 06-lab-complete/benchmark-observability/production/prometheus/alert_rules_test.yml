@@ -1,0 +1,63 @@
+# ============================================================
+# Unit test cho alert rules — alert cũng là code, cần được test!
+#
+# Chạy (cần promtool, đi kèm Prometheus):
+#   docker run --rm -v "$PWD/prometheus:/p" --entrypoint promtool \
+#     prom/prometheus:v3.16.0 test rules /p/alert_rules_test.yml
+#
+# Cú pháp series: 'a+bxN' = bắt đầu từ a, mỗi bước tăng b, lặp N lần
+# ============================================================
+rule_files:
+  - alert_rules.yml
+
+evaluation_interval: 15s
+
+tests:
+  # 10 req/s, trong đó 1 req/s lỗi 503 (10%) liên tục 5 phút → phải firing
+  - interval: 15s
+    input_series:
+      - series: 'http_requests_total{job="agent", instance="agent-1:8000", route="/ask", method="POST", status="200"}'
+        values: '0+135x20'
+      - series: 'http_requests_total{job="agent", instance="agent-1:8000", route="/ask", method="POST", status="503"}'
+        values: '0+15x20'
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: AgentHighErrorRate
+        exp_alerts: []                      # mới 30s → chưa đủ "for: 1m"
+      - eval_time: 3m
+        alertname: AgentHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Error rate /ask vượt 5%"
+              description: "Error rate hiện tại: 10% (SLO: < 5%)"
+
+  # Error rate chỉ 1% → KHÔNG được báo động
+  - interval: 15s
+    input_series:
+      - series: 'http_requests_total{job="agent", instance="agent-1:8000", route="/ask", method="POST", status="200"}'
+        values: '0+148x20'
+      - series: 'http_requests_total{job="agent", instance="agent-1:8000", route="/ask", method="POST", status="503"}'
+        values: '0+1.5x20'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: AgentHighErrorRate
+        exp_alerts: []
+
+  # Instance không scrape được 1 phút → AgentInstanceDown
+  - interval: 15s
+    input_series:
+      - series: 'up{job="agent", instance="agent-2:8000"}'
+        values: '1 1 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 90s
+        alertname: AgentInstanceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: agent
+              instance: agent-2:8000
+            exp_annotations:
+              summary: "Instance agent agent-2:8000 không scrape được"
+              description: "Prometheus không gọi được /metrics của agent-2:8000 trong 30s"

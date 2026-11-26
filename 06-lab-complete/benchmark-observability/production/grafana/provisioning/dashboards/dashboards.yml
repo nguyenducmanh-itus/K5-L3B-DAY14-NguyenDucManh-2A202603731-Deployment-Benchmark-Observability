@@ -1,0 +1,12 @@
+# Grafana tự load mọi dashboard JSON trong /var/lib/grafana/dashboards
+apiVersion: 1
+
+providers:
+  - name: day14-agent
+    folder: Day 14 - Agent Observability
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

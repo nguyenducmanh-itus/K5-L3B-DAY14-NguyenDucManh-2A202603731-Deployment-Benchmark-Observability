@@ -1,0 +1,59 @@
+# ============================================================
+# Alert rules — đánh giá liên tục, xem trạng thái ở http://localhost:9090/alerts
+#
+# Mỗi alert có 3 trạng thái: inactive → pending (đúng điều kiện nhưng chưa đủ "for")
+#                            → firing (kéo dài đủ lâu → gửi cảnh báo)
+# "for" giúp tránh báo động giả khi chỉ có 1 spike ngắn.
+# ============================================================
+groups:
+  - name: agent-slo
+    rules:
+      # ── Errors ────────────────────────────────────────────
+      - alert: AgentHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="agent", route="/ask", status=~"5.."}[1m]))
+            /
+          sum(rate(http_requests_total{job="agent", route="/ask"}[1m]))
+            > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate /ask vượt 5%"
+          description: "Error rate hiện tại: {{ $value | humanizePercentage }} (SLO: < 5%)"
+
+      # ── Latency ───────────────────────────────────────────
+      - alert: AgentHighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{job="agent", route="/ask"}[1m]))
+          ) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency /ask vượt 1 giây"
+          description: "p95 hiện tại: {{ $value | humanizeDuration }} (SLO: < 1s)"
+
+      # ── Availability ──────────────────────────────────────
+      - alert: AgentInstanceDown
+        expr: up{job="agent"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance agent {{ $labels.instance }} không scrape được"
+          description: "Prometheus không gọi được /metrics của {{ $labels.instance }} trong 30s"
+
+  - name: agent-cost
+    rules:
+      # ── Cost ──────────────────────────────────────────────
+      # Ước tính tốc độ "đốt tiền" theo giờ dựa trên 5 phút gần nhất
+      - alert: LLMCostBurnRateHigh
+        expr: sum(rate(llm_cost_usd_total{job="agent"}[5m])) * 3600 > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Chi phí LLM đang vượt $2/giờ"
+          description: "Tốc độ chi tiêu hiện tại: ${{ $value | printf \"%.2f\" }}/giờ"

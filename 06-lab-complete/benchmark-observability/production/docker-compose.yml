@@ -1,0 +1,123 @@
+# ============================================================
+# Day 14 — Benchmark & Observability Stack
+#
+#   locust ──▶ nginx :8080 ──▶ agent (x2) ──OTLP──▶ jaeger :16686
+#                                 ▲
+#                    prometheus :9090 (scrape /metrics)
+#                                 ▲
+#                         grafana :3000 (dashboard)
+#
+# Chạy  : docker compose up --build -d
+# Scale : docker compose up -d --scale agent=3
+# Dừng  : docker compose down
+# ============================================================
+
+services:
+
+  # ──────────────────────────────────────
+  # Agent — instrumented (metrics + traces + JSON logs)
+  # ──────────────────────────────────────
+  agent:
+    build: .
+    environment:
+      - ENVIRONMENT=lab
+      - AGENT_VERSION=${AGENT_VERSION:-v2}
+      - LLM_MODEL=${LLM_MODEL:-mock-llm-small}
+      - AGENT_API_KEY=${AGENT_API_KEY:-day14-lab-key}
+      # Fault injection — chỉnh để thấy dashboard/alert phản ứng
+      - MOCK_LATENCY_MS=${MOCK_LATENCY_MS:-120}
+      - MOCK_SLOW_RATE=${MOCK_SLOW_RATE:-0.03}
+      - MOCK_ERROR_RATE=${MOCK_ERROR_RATE:-0.01}
+      # OpenTelemetry → Jaeger (OTLP/HTTP)
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - TRACING_ENABLED=true
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    depends_on:
+      - jaeger
+    restart: unless-stopped
+    networks: [obs_net]
+
+  # ──────────────────────────────────────
+  # Nginx — load balancer, cổng vào duy nhất từ bên ngoài
+  # ──────────────────────────────────────
+  nginx:
+    image: nginx:1.28-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - agent
+    networks: [obs_net]
+
+  # ──────────────────────────────────────
+  # Prometheus — thu thập & lưu metrics, đánh giá alert rules
+  # ──────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle          # cho phép reload config: curl -X POST localhost:9090/-/reload
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    networks: [obs_net]
+
+  # ──────────────────────────────────────
+  # Grafana — dashboard (datasource + dashboard được provision sẵn)
+  # ──────────────────────────────────────
+  grafana:
+    image: grafana/grafana:13.2.4
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true          # lab: xem dashboard không cần login
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/agent-overview.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks: [obs_net]
+
+  # ──────────────────────────────────────
+  # Jaeger — nhận traces qua OTLP, UI để xem
+  # ──────────────────────────────────────
+  jaeger:
+    image: jaegertracing/jaeger:2.23.0
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4318:4318"     # OTLP/HTTP (cho phép app chạy ngoài Docker gửi trace vào)
+    networks: [obs_net]
+
+  # ──────────────────────────────────────
+  # Locust — load generator có web UI
+  # ──────────────────────────────────────
+  locust:
+    image: locustio/locust:2.47.0
+    command: -f /mnt/locust/locustfile.py --host http://nginx
+    ports:
+      - "8089:8089"
+    environment:
+      - AGENT_API_KEY=${AGENT_API_KEY:-day14-lab-key}
+    volumes:
+      - ./locust:/mnt/locust:ro
+      - ./benchmark-results:/mnt/results
+    depends_on:
+      - nginx
+    networks: [obs_net]
+
+networks:
+  obs_net:
+    driver: bridge

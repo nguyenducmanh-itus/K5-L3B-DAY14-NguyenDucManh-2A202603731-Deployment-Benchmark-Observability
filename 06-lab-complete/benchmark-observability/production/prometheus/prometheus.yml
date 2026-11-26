@@ -1,0 +1,29 @@
+# ============================================================
+# Prometheus config
+#
+# Prometheus PULL metrics: cứ mỗi scrape_interval, nó gọi GET /metrics
+# trên từng target và lưu lại thành time series.
+# ============================================================
+global:
+  scrape_interval: 5s        # lab: 5s cho dễ thấy thay đổi. Production thường 15–30s
+  evaluation_interval: 5s    # chu kỳ tính alert rules
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # Tự giám sát chính Prometheus
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Các instance agent — dùng DNS service discovery:
+  # Docker DNS trả về IP của TẤT CẢ container tên "agent"
+  # → scale lên 3 instance thì Prometheus tự thấy 3 target, không cần sửa config.
+  - job_name: agent
+    dns_sd_configs:
+      - names: ["agent"]
+        type: A
+        port: 8000
+        refresh_interval: 10s
+    metrics_path: /metrics

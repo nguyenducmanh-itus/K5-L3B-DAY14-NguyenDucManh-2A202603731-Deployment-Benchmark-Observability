@@ -1,0 +1,23 @@
+{"id": "basic-01", "category": "deployment", "question": "Deploy nghĩa là gì?", "expected_keywords": ["đưa code", "server"]}
+{"id": "docker-01", "category": "docker", "question": "Docker container giải quyết vấn đề gì khi deploy?", "expected_keywords": ["đóng gói", "dependencies", "môi trường"]}
+{"id": "docker-02", "category": "docker", "question": "Multi-stage build trong Dockerfile có lợi ích gì?", "expected_keywords": ["builder", "runtime", "nhỏ hơn"]}
+{"id": "probe-01", "category": "reliability", "question": "Liveness probe dùng để làm gì?", "expected_keywords": ["còn sống", "restart"]}
+{"id": "probe-02", "category": "reliability", "question": "Readiness probe fail thì chuyện gì xảy ra?", "expected_keywords": ["load balancer", "traffic", "không restart"]}
+{"id": "reliability-01", "category": "reliability", "question": "Graceful shutdown xử lý SIGTERM như thế nào?", "expected_keywords": ["sigterm", "in-flight", "request mới"]}
+{"id": "config-01", "category": "deployment", "question": "Theo 12-factor, nên lưu config và secret ở đâu?", "expected_keywords": ["biến môi trường", "hardcode"]}
+{"id": "security-01", "category": "security", "question": "Khi client vượt rate limit, API nên trả về mã HTTP nào?", "expected_keywords": ["429", "retry-after"]}
+{"id": "security-02", "category": "security", "question": "JWT khác gì API key trong xác thực?", "expected_keywords": ["token", "hết hạn", "chữ ký"]}
+{"id": "scaling-01", "category": "scaling", "question": "Tại sao agent cần stateless để scale ngang?", "expected_keywords": ["redis", "session", "load balancer"]}
+{"id": "scaling-02", "category": "scaling", "question": "Nginx load balancer phân phối request theo cách nào?", "expected_keywords": ["round-robin", "instance"]}
+{"id": "scaling-03", "category": "scaling", "question": "Kubernetes HPA scale dựa trên những chỉ số nào?", "expected_keywords": ["cpu", "memory", "custom metrics"]}
+{"id": "bench-01", "category": "benchmark", "question": "Vì sao SLO latency nên dùng p95 thay vì trung bình?", "expected_keywords": ["95%", "tail latency", "p99"]}
+{"id": "bench-02", "category": "benchmark", "question": "Golden dataset dùng để làm gì trước khi deploy?", "expected_keywords": ["đáp án", "regression"]}
+{"id": "obs-01", "category": "observability", "question": "Prometheus thu thập metrics theo cơ chế push hay pull?", "expected_keywords": ["pull", "scrape", "/metrics"]}
+{"id": "obs-02", "category": "observability", "question": "Counter, Gauge và Histogram trong Prometheus khác nhau thế nào?", "expected_keywords": ["chỉ tăng", "lên xuống", "bucket"]}
+{"id": "obs-03", "category": "observability", "question": "Vì sao label có cardinality cao như user_id lại nguy hiểm cho metric?", "expected_keywords": ["time series", "ram"]}
+{"id": "obs-04", "category": "observability", "question": "Trong distributed tracing, span là gì?", "expected_keywords": ["span", "attributes", "thời gian"]}
+{"id": "obs-05", "category": "observability", "question": "OpenTelemetry và Jaeger dùng để làm gì trong observability?", "expected_keywords": ["trace", "jaeger"]}
+{"id": "obs-06", "category": "observability", "question": "Vì sao nên ghi log dạng JSON thay vì text thuần?", "expected_keywords": ["request_id", "trace_id", "lọc"]}
+{"id": "slo-01", "category": "benchmark", "question": "Error budget được tính như thế nào từ SLO?", "expected_keywords": ["sli", "100%"]}
+{"id": "cost-01", "category": "cost", "question": "Chi phí gọi LLM được tính dựa trên những gì?", "expected_keywords": ["token", "input", "output"]}
+{"id": "cloud-01", "category": "deployment", "question": "Cloud Run khác gì so với tự quản lý VM?", "expected_keywords": ["container", "tự scale", "https"]}
